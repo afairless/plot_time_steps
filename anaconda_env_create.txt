@@ -1,0 +1,5 @@
+conda create --name plot_sns pandas numpy scikit-learn scipy matplotlib seaborn
+
+source activate plot_sns
+
+conda env export > environment.yml
