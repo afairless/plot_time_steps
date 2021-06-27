@@ -1,4 +1,5 @@
 # /usr/bin/env python3
+import matplotlib.pyplot as plt
 
 
 def prettify_variable_names(a_string):
@@ -109,7 +110,7 @@ def plot_groups_of_time_series(
     :param alpha: float ranging from 0 to 1 indicating translucency/opacity of
         individual times series lines
     :param title: str, title printed at top of plot
-    :param kwargs: any additional plotting parameters to be passed to plotting
+    :param **kwargs: any additional plotting parameters to be passed to plotting
         package Seaborn's 'lineplot' function
     :return:
     """
@@ -207,6 +208,85 @@ def plot_boxplot_stripplot(
     plt.close()
 
 
+def plot_events_by_episode(
+        a_dataframe, x_axis_colname, y_axis_colname, event_colname,
+        events_list=None, output_filepath=None, palette=None,
+        figsize=(6.4, 4.8), title=None, **kwargs):
+    """
+    Plots events that may occur at each time step of an episode, and plots these
+        across multiple episodes
+
+    :param a_dataframe: a Pandas DataFrame
+    :param x_axis_colname: str, name of dataframe column that contains the time
+        step (which may be a float or integer) to be plotted on the x-axis
+    :param y_axis_colname: str, name of dataframe column that contains the index
+        of the episode (which is presumed to be an integer but may be a float)
+        to be plotted on the y-axis, i.e., so that episodes are separated
+        vertically and each time step within an episode appears along a
+        horizontal line specified by the episode index
+    :param event_colname: str, name of dataframe column that specifies the
+        events (which are discrete, e.g., integers or strings) that may occur
+        at each time step of an episode
+    :param output_filepath: str, location at which to save the plot
+    :param palette: list of strings representing hexadecimal colors used for
+        plotting each dataframe in 'list_of_dataframes'
+    :param figsize: tuple of two floats, specifies width and height of the
+        figure for Matplotlib/Seaborn axes
+    :param title: str, title printed at top of plot
+    :param **kwargs: any additional plotting parameters to be passed to plotting
+        package Seaborn's 'scatterplot' function
+    :return:
+    """
+
+    from os import getcwd as os_getcwd
+    from os.path import join as os_join
+    from matplotlib import pyplot as plt
+    import seaborn as sns
+
+    sns.set_style('whitegrid')
+
+    if not output_filepath:
+        output_filepath = os_join(os_getcwd(), 'plot.png')
+
+    episode_lengths = (
+        a_dataframe[y_axis_colname].value_counts().sort_index().reset_index())
+
+    if events_list:
+        a_dataframe = a_dataframe.copy()
+        a_dataframe = (
+            a_dataframe.loc[a_dataframe[event_colname].isin(events_list), :])
+
+    if not palette:
+        n_colors = a_dataframe[event_colname].nunique()
+        palette = sns.color_palette('bright', n_colors).as_hex()
+
+    _, ax = plt.subplots(figsize=figsize)
+    sns.scatterplot(
+        data=a_dataframe, x=x_axis_colname, y=y_axis_colname, hue=event_colname,
+        palette=palette, ax=ax, **kwargs)
+    sns.scatterplot(
+        data=episode_lengths, x=y_axis_colname, y='index', color='#000000',
+        marker='x')
+
+    if title:
+        plt.title(title, fontsize=15)
+    else:
+        plt.suptitle('legend shows different events that occur within an episode', fontsize=10)
+        plt.title(
+            'X-axis shows each time step within an episode; Y-axis shows different episodes',
+            fontsize=10)
+
+    x_label = prettify_variable_names(x_axis_colname)
+    plt.xlabel(x_label, fontsize=10)
+    y_label = prettify_variable_names(y_axis_colname)
+    plt.ylabel(y_label, fontsize=10)
+    plt.legend(loc='upper right')
+
+    plt.savefig(output_filepath)
+    plt.clf()
+    plt.close()
+
+
 def main():
     """
     """
@@ -283,6 +363,23 @@ def main():
         output_filepath=output_filepath, palette=palette, title=title)
 
 
+    ########################################
+    # PLOT TIMELINE OF EVENTS DURING EACH EPISODE
+    ########################################
+
+    plot_events_by_episode(
+        dfs[0], 'episode_step_idx', 'episode_idx', 'action_name',
+        output_filepath='timeline01.png', figsize=(6.4*2, 4.8))
+
+    plot_events_by_episode(
+        dfs[1], 'episode_step_idx', 'episode_idx', 'action_name',
+        events_list=['Nku', 'Mjt'], output_filepath='timeline02.png',
+        figsize=(6.4*2, 4.8))
+
+    plot_events_by_episode(
+        dfs[2], 'episode_step_idx', 'episode_idx', 'action_name',
+        events_list=['Mjt'], output_filepath='timeline03.png',
+        figsize=(6.4*2, 4.8))
 
 
 if __name__ == '__main__':
